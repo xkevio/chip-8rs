@@ -28,14 +28,11 @@ fn main() {
     window.limit_update_rate(None);
 
     let rom_path = std::env::args().nth(1).expect("No ROM was provided!");
+    if let Ok(ins) = std::fs::read(&rom_path) {
+        raw_instructions = ins;
+    }
 
     while window.is_open() {
-        if raw_instructions.is_empty() {
-            if let Ok(ins) = std::fs::read(&rom_path) {
-                raw_instructions = ins;
-            }
-        }
-
         if !stop && !raw_instructions.is_empty() {
             cpu.run(&raw_instructions, &mut buffer, &mut window);
             stop = true;
