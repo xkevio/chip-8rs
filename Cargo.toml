@@ -9,4 +9,3 @@ edition = "2021"
 rand = "0.8.4"
 minifb = "0.20.0"
 spin_sleep = "1.0.0"
-winapi = { version = "0.3.9", features = ["winuser", "fileapi"] }

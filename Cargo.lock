@@ -112,7 +112,6 @@ dependencies = [
  "minifb",
  "rand",
  "spin_sleep",
- "winapi",
 ]
 
 [[package]]
