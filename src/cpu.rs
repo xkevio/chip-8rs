@@ -1,19 +1,23 @@
-use std::time::{Duration, Instant};
-
 use minifb::Window;
+use rodio::{source::SineWave, OutputStream, OutputStreamHandle, Sink, Source};
+use std::time::{Duration, Instant};
 
 use crate::keypad;
 
 pub struct CPU {
     memory: [u8; 4096],
     registers: [u8; 16],
+
     i_register: u16,
     delay_register: u8,
     sound_register: u8,
+
     program_counter: u16,
     stack_pointer: u8,
     stack: [u16; 16],
     pc_advance: bool,
+
+    streams: (OutputStream, OutputStreamHandle),
 }
 
 impl CPU {
@@ -21,13 +25,17 @@ impl CPU {
         CPU {
             memory: [0; 4096],
             registers: [0; 16],
+
             i_register: 0,
             delay_register: 0,
             sound_register: 0,
+
             program_counter: 512,
             stack_pointer: 0,
             stack: [0; 16],
             pc_advance: true,
+
+            streams: OutputStream::try_default().expect("Error initializing audio devices!"),
         }
     }
 
@@ -42,13 +50,15 @@ impl CPU {
         let mut counter = 0;
         let mut ins_c = 0u64;
 
+        let sink = Sink::try_new(&self.streams.1).unwrap();
+        sink.pause();
+
         loop {
             if !window.is_open() {
                 break;
             }
 
             if self.delay_register > 0 {
-                // dbg!(self.delay_register);
                 if d_c == 8 {
                     self.delay_register -= 1;
                     d_c = 0;
@@ -59,16 +69,27 @@ impl CPU {
 
             if self.sound_register > 0 {
                 println!("beep!");
+
+                if sink.is_paused() {
+                    sink.play();
+                    sink.append(
+                        SineWave::new(220.0)
+                            .take_duration(Duration::from_secs_f32(0.5))
+                            .amplify(0.25),
+                    );
+                }
+
                 if s_c == 8 {
                     self.sound_register -= 1;
                     s_c = 0;
                 } else {
                     s_c += 1;
                 }
+            } else {
+                sink.pause();
             }
 
             self.pc_advance = true;
-            // dbg!(self.program_counter);
 
             let (ins_a, ins_b) = (
                 self.memory[self.program_counter as usize],
@@ -170,7 +191,7 @@ impl CPU {
             0xF0, 0x80, 0xF0, 0x80, 0x80,
         ];
 
-        self.memory[..font.len()].clone_from_slice(&font);
+        self.memory[..font.len()].copy_from_slice(&font);
     }
 
     fn clear(&mut self, buffer: &mut [u32], window: &mut Window) {
@@ -407,8 +428,6 @@ impl CPU {
 
             digits.push(digit);
         }
-
-        dbg!(&digits);
 
         self.memory[self.i_register as usize] = *digits.get(2).unwrap_or(&0);
         self.memory[(self.i_register + 1) as usize] = *digits.get(1).unwrap_or(&0);
