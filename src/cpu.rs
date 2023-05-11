@@ -334,7 +334,7 @@ impl CPU {
         let x = self.registers[b as usize];
         let y = self.registers[c as usize];
 
-        self.registers[0xF_usize] = 0;
+        self.registers[0xF] = 0;
 
         for off in 0..d {
             let mut bits = [0u8; 8];
