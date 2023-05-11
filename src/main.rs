@@ -7,12 +7,20 @@ mod keypad;
 const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
 
-fn main() {
-    let mut cpu = CPU::new();
-    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+pub struct Chip8 {
+    pub cpu: CPU,
+    pub buffer: Vec<u32>,
+    pub rom: Vec<u8>,
+    pub stop: bool,
+}
 
-    let mut raw_instructions: Vec<u8> = Vec::new();
-    let mut stop: bool = false;
+fn main() {
+    let mut chip8 = Chip8 {
+        cpu: CPU::new(),
+        buffer: vec![0; WIDTH * HEIGHT],
+        rom: Vec::<u8>::new(),
+        stop: false,
+    };
 
     let mut window = Window::new(
         "Chip-8rs",
@@ -29,13 +37,13 @@ fn main() {
 
     let rom_path = std::env::args().nth(1).expect("No ROM was provided!");
     if let Ok(ins) = std::fs::read(rom_path) {
-        raw_instructions = ins;
+        chip8.rom = ins;
     }
 
     while window.is_open() {
-        if !stop && !raw_instructions.is_empty() {
-            cpu.run(&raw_instructions, &mut buffer, &mut window);
-            stop = true;
+        if !chip8.stop && !chip8.rom.is_empty() {
+            chip8.cpu.run(&chip8.rom, &mut chip8.buffer, &mut window);
+            chip8.stop = true;
         }
 
         window.update();

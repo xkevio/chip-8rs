@@ -143,7 +143,9 @@ impl CPU {
                 _ => {
                     println!(
                         "Last op-code, avg: {}",
-                        ins_c / ins_start.elapsed().as_secs()
+                        ins_c
+                            .checked_div(ins_start.elapsed().as_secs())
+                            .unwrap_or_default()
                     );
                     break;
                 }
@@ -279,39 +281,31 @@ impl CPU {
         let (result, carry) =
             self.registers[b as usize].overflowing_add(self.registers[c as usize]);
         self.registers[b as usize] = result;
-        self.registers[0xF_usize] = carry as u8;
+        self.registers[0xF] = carry as u8;
     }
 
     fn sub(&mut self, b: u8, c: u8) {
-        if self.registers[b as usize] > self.registers[c as usize] {
-            self.registers[0xF_usize] = 1;
-        } else {
-            self.registers[0xF_usize] = 0;
-        }
-
+        let carry = self.registers[b as usize] > self.registers[c as usize];
         self.registers[b as usize] -= self.registers[c as usize];
+        self.registers[0xF] = carry as u8;
     }
 
     fn shr(&mut self, b: u8, _c: u8) {
-        let lsb: bool = (self.registers[b as usize] & 1) == 1;
-        self.registers[0xF_usize] = lsb as u8;
+        let lsb = (self.registers[b as usize] & 1) == 1;
         self.registers[b as usize] >>= 1;
+        self.registers[0xF] = lsb as u8;
     }
 
     fn subn(&mut self, b: u8, c: u8) {
-        if self.registers[c as usize] > self.registers[b as usize] {
-            self.registers[0xF_usize] = 1;
-        } else {
-            self.registers[0xF_usize] = 0;
-        }
-
+        let carry = self.registers[c as usize] > self.registers[b as usize];
         self.registers[b as usize] = self.registers[c as usize] - self.registers[b as usize];
+        self.registers[0xF] = carry as u8;
     }
 
     fn shl(&mut self, b: u8, _c: u8) {
-        let msb: bool = ((self.registers[b as usize] >> 7) & 1) == 1;
-        self.registers[0xF_usize] = msb as u8;
+        let msb = ((self.registers[b as usize] >> 7) & 1) == 1;
         self.registers[b as usize] <<= 1;
+        self.registers[0xF] = msb as u8;
     }
 
     fn skip_r_not(&mut self, b: u8, c: u8) {
@@ -360,7 +354,7 @@ impl CPU {
                 let new_pix = bits[i as usize] ^ prev_to_bit;
 
                 if new_pix < prev_to_bit {
-                    self.registers[0xF_usize] = 1;
+                    self.registers[0xF] = 1;
                 }
 
                 buffer[(wrap_x + (wrap_y * 64)) as usize] = if new_pix >= 1 { u32::MAX } else { 0 };
@@ -389,8 +383,6 @@ impl CPU {
     }
 
     fn wait_for_key(&mut self, b: u8, key_state: &[bool]) {
-        // println!("Waiting for key, storing it in register 0x{b:02x}!");
-
         self.pc_advance = false;
         for i in 0..16 {
             if key_state[i] {
